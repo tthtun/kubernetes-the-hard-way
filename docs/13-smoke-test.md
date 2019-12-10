@@ -17,7 +17,12 @@ Print a hexdump of the `kubernetes-the-hard-way` secret stored in etcd:
 
 ```
 gcloud compute ssh controller-0 \
-  --command "ETCDCTL_API=3 etcdctl get /registry/secrets/default/kubernetes-the-hard-way | hexdump -C"
+  --command "sudo ETCDCTL_API=3 etcdctl get \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/etcd/ca.pem \
+  --cert=/etc/etcd/kubernetes.pem \
+  --key=/etc/etcd/kubernetes-key.pem\
+  /registry/secrets/default/kubernetes-the-hard-way | hexdump -C"
 ```
 
 > output
@@ -27,18 +32,17 @@ gcloud compute ssh controller-0 \
 00000010  73 2f 64 65 66 61 75 6c  74 2f 6b 75 62 65 72 6e  |s/default/kubern|
 00000020  65 74 65 73 2d 74 68 65  2d 68 61 72 64 2d 77 61  |etes-the-hard-wa|
 00000030  79 0a 6b 38 73 3a 65 6e  63 3a 61 65 73 63 62 63  |y.k8s:enc:aescbc|
-00000040  3a 76 31 3a 6b 65 79 31  3a ea 7c 76 32 43 62 6f  |:v1:key1:.|v2Cbo|
-00000050  44 02 02 8c b7 ca fe 95  a5 33 f6 a1 18 6c 3d 53  |D........3...l=S|
-00000060  e7 9c 51 ee 32 f6 e4 17  ea bb 11 d5 2f e2 40 00  |..Q.2......./.@.|
-00000070  ae cf d9 e7 ba 7f 68 18  d3 c1 10 10 93 43 35 bd  |......h......C5.|
-00000080  24 dd 66 b4 f8 f9 82 77  4a d5 78 03 19 41 1e bc  |$.f....wJ.x..A..|
-00000090  94 3f 17 41 ad cc 8c ba  9f 8f 8e 56 97 7e 96 fb  |.?.A.......V.~..|
-000000a0  8f 2e 6a a5 bf 08 1f 0b  c3 4b 2b 93 d1 ec f8 70  |..j......K+....p|
-000000b0  c1 e4 1d 1a d2 0d f8 74  3a a1 4f 3c e0 c9 6d 3f  |.......t:.O<..m?|
-000000c0  de a3 f5 fd 76 aa 5e bc  27 d9 3c 6b 8f 54 97 45  |....v.^.'.<k.T.E|
-000000d0  31 25 ff 23 90 a4 2a f2  db 78 b1 3b ca 21 f3 6b  |1%.#..*..x.;.!.k|
-000000e0  dd fb 8e 53 c6 23 0d 35  c8 0a                    |...S.#.5..|
-000000ea
+00000040  3a 76 31 3a 6b 65 79 31  3a 44 ac 6e ac 11 2f 28  |:v1:key1:D.n../(|
+00000050  02 46 3d ad 9d cd 68 be  e4 cc 63 ae 13 e4 99 e8  |.F=...h...c.....|
+00000060  6e 55 a0 fd 9d 33 7a b1  17 6b 20 19 23 dc 3e 67  |nU...3z..k .#.>g|
+00000070  c9 6c 47 fa 78 8b 4d 28  cd d1 71 25 e9 29 ec 88  |.lG.x.M(..q%.)..|
+00000080  7f c9 76 b6 31 63 6e ea  ac c5 e4 2f 32 d7 a6 94  |..v.1cn..../2...|
+00000090  3c 3d 97 29 40 5a ee e1  ef d6 b2 17 01 75 a4 a3  |<=.)@Z.......u..|
+000000a0  e2 c2 70 5b 77 1a 0b ec  71 c3 87 7a 1f 68 73 03  |..p[w...q..z.hs.|
+000000b0  67 70 5e ba 5e 65 ff 6f  0c 40 5a f9 2a bd d6 0e  |gp^.^e.o.@Z.*...|
+000000c0  44 8d 62 21 1a 30 4f 43  b8 03 69 52 c0 b7 2e 16  |D.b!.0OC..iR....|
+000000d0  14 a5 91 21 29 fa 6e 03  47 e2 06 25 45 7c 4f 8f  |...!).n.G..%E|O.|
+000000e0  6e bb 9d 3b e9 e5 2d 9e  3e 0a                    |n..;..-.>.|
 ```
 
 The etcd key should be prefixed with `k8s:enc:aescbc:v1:key1`, which indicates the `aescbc` provider was used to encrypt the data with the `key1` encryption key.
@@ -50,20 +54,20 @@ In this section you will verify the ability to create and manage [Deployments](h
 Create a deployment for the [nginx](https://nginx.org/en/) web server:
 
 ```
-kubectl run nginx --image=nginx
+kubectl create deployment nginx --image=nginx
 ```
 
 List the pod created by the `nginx` deployment:
 
 ```
-kubectl get pods -l run=nginx
+kubectl get pods -l app=nginx
 ```
 
 > output
 
 ```
-NAME                     READY     STATUS    RESTARTS   AGE
-nginx-4217019353-b5gzn   1/1       Running   0          15s
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-554b9c67f9-vt5rn   1/1     Running   0          10s
 ```
 
 ### Port Forwarding
@@ -73,7 +77,7 @@ In this section you will verify the ability to access applications remotely usin
 Retrieve the full name of the `nginx` pod:
 
 ```
-POD_NAME=$(kubectl get pods -l run=nginx -o jsonpath="{.items[0].metadata.name}")
+POD_NAME=$(kubectl get pods -l app=nginx -o jsonpath="{.items[0].metadata.name}")
 ```
 
 Forward port `8080` on your local machine to port `80` of the `nginx` pod:
@@ -99,13 +103,13 @@ curl --head http://127.0.0.1:8080
 
 ```
 HTTP/1.1 200 OK
-Server: nginx/1.13.7
-Date: Mon, 18 Dec 2017 14:50:36 GMT
+Server: nginx/1.17.3
+Date: Sat, 14 Sep 2019 21:10:11 GMT
 Content-Type: text/html
 Content-Length: 612
-Last-Modified: Tue, 21 Nov 2017 14:28:04 GMT
+Last-Modified: Tue, 13 Aug 2019 08:50:00 GMT
 Connection: keep-alive
-ETag: "5a1437f4-264"
+ETag: "5d5279b8-264"
 Accept-Ranges: bytes
 ```
 
@@ -131,7 +135,7 @@ kubectl logs $POD_NAME
 > output
 
 ```
-127.0.0.1 - - [18/Dec/2017:14:50:36 +0000] "HEAD / HTTP/1.1" 200 0 "-" "curl/7.54.0" "-"
+127.0.0.1 - - [14/Sep/2019:21:10:11 +0000] "HEAD / HTTP/1.1" 200 0 "-" "curl/7.52.1" "-"
 ```
 
 ### Exec
@@ -147,7 +151,7 @@ kubectl exec -ti $POD_NAME -- nginx -v
 > output
 
 ```
-nginx version: nginx/1.13.7
+nginx version: nginx/1.17.3
 ```
 
 ## Services
@@ -194,13 +198,13 @@ curl -I http://${EXTERNAL_IP}:${NODE_PORT}
 
 ```
 HTTP/1.1 200 OK
-Server: nginx/1.13.7
-Date: Mon, 18 Dec 2017 14:52:09 GMT
+Server: nginx/1.17.3
+Date: Sat, 14 Sep 2019 21:12:35 GMT
 Content-Type: text/html
 Content-Length: 612
-Last-Modified: Tue, 21 Nov 2017 14:28:04 GMT
+Last-Modified: Tue, 13 Aug 2019 08:50:00 GMT
 Connection: keep-alive
-ETag: "5a1437f4-264"
+ETag: "5d5279b8-264"
 Accept-Ranges: bytes
 ```
 
